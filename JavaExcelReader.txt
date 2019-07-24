@@ -1,0 +1,346 @@
+package com.reflection.abc;
+
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
+import java.io.IOException;
+
+import javax.persistence.Column;
+
+import org.apache.commons.io.FilenameUtils;
+import org.apache.poi.hssf.usermodel.HSSFSheet;
+import org.apache.poi.hssf.usermodel.HSSFWorkbook;
+import org.apache.poi.ss.usermodel.Cell;
+import org.apache.poi.ss.usermodel.Row;
+import org.apache.poi.xssf.usermodel.XSSFSheet;
+import org.apache.poi.xssf.usermodel.XSSFWorkbook;
+
+public class SearchExcel {
+
+	public static void main(String[] args) {
+
+		String filePath = "D:\\Suhas\\Balaraj\\TestFileOld.xls";
+		try {
+			FileInputStream file = new FileInputStream(new File(filePath));
+
+			String fileExtension = FilenameUtils.getExtension(filePath);
+
+			if (fileExtension.equals("xlsx")) {
+				newExcelVersion(file, filePath);
+			} else if (fileExtension.equals("xls")) {
+				oldExcelVersion(file, filePath);
+			} else {
+				System.out.println("Invalid File Extension");
+			}
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+
+	}
+
+	private static void newExcelVersion(FileInputStream file, String filepath)
+			throws IOException, FileNotFoundException {
+		// Create Workbook instance holding reference to .xlsx file
+		XSSFWorkbook workbookInput = new XSSFWorkbook(file);
+
+		// Get first/desired sheet from the workbook
+		XSSFSheet sheetInput = workbookInput.getSheetAt(0);
+
+		// Blank workbook
+		XSSFWorkbook workbookOutput = new XSSFWorkbook();
+
+		// Create a blank sheet
+		XSSFSheet sheetOutputResult = workbookOutput.createSheet("Result");
+
+		/*int rownumOutputResult = 0;
+
+		Row rowOutput = sheetOutputResult.createRow(rownumOutputResult++);
+
+		Cell cellOutputResult = rowOutput.createCell(0);
+		cellOutputResult.setCellValue("Table Name");
+
+		cellOutputResult = rowOutput.createCell(1);
+		cellOutputResult.setCellValue("Column Name");
+
+		cellOutputResult = rowOutput.createCell(2);
+		cellOutputResult.setCellValue("Attribute Name");*/
+		
+		Row rowInput = sheetInput.getRow(0);
+		
+		Cell tableCell = rowInput.createCell(3);
+		tableCell.setCellValue("Table Name");
+		Cell columnCell = rowInput.createCell(4);
+		columnCell.setCellValue("Column Name");
+		Cell commentsCell = rowInput.createCell(5);
+		commentsCell.setCellValue("Comments");
+
+		// Iterate through each rows one by one
+		int rowCount = sheetInput.getPhysicalNumberOfRows();
+
+		for (int i = 1; i < rowCount; i++) {
+
+			rowInput = sheetInput.getRow(i);
+
+			Cell packageCell = rowInput.getCell(0);
+			Cell entityCell = rowInput.getCell(1);
+			Cell attributeCell = rowInput.getCell(2);
+
+			tableCell = rowInput.createCell(3);
+			columnCell = rowInput.createCell(4);
+			commentsCell = rowInput.createCell(5);
+
+			if (packageCell != null) {
+				if (entityCell != null) {
+					try {
+						Class className = Class
+								.forName(packageCell.getStringCellValue() + "." + entityCell.getStringCellValue());
+
+						javax.persistence.Entity entity = (javax.persistence.Entity) className
+								.getAnnotation(javax.persistence.Entity.class);
+
+						javax.persistence.Table table = (javax.persistence.Table) className
+								.getAnnotation(javax.persistence.Table.class);
+
+						if (entity != null && table != null) {
+
+							if (attributeCell != null) {
+
+								try {
+									Column column = className.getDeclaredField(attributeCell.getStringCellValue())
+											.getAnnotation(Column.class);
+
+									if (column != null) {
+										System.out.print(table.name() + "|");
+										System.out.print(className.getDeclaredField(attributeCell.getStringCellValue())
+												.getAnnotation(Column.class).name() + "|");
+										System.out.println(attributeCell.getStringCellValue());
+
+										/*rowOutput = sheetOutputResult.createRow(rownumOutputResult++);
+										cellOutputResult = rowOutput.createCell(0);
+										cellOutputResult.setCellValue(table.name());
+
+										cellOutputResult = rowOutput.createCell(1);
+										cellOutputResult.setCellValue(
+												className.getDeclaredField(columnCell.getStringCellValue())
+														.getAnnotation(Column.class).name());
+
+										cellOutputResult = rowOutput.createCell(2);
+										cellOutputResult.setCellValue(columnCell.getStringCellValue());*/
+
+										tableCell.setCellValue(table.name());
+										columnCell.setCellValue(className.getDeclaredField(attributeCell.getStringCellValue())
+												.getAnnotation(Column.class).name());
+										commentsCell.setCellValue("Success");
+										
+									} else {
+										System.out
+												.println("Field Name does not have @Column annotations at Row : " + i);
+										commentsCell.setCellValue(
+												"Field Name does not have @Column annotations at Row : " + i);
+										continue;
+									}
+								} catch (NoSuchFieldException e) {
+									System.out.println("Field Name does exists in the file. Row : " + i);
+									commentsCell.setCellValue("Field Name does exists in the file. Row : " + i);
+									continue;
+								}
+							} else {
+								System.out.println("No Field Name at Row : " + i);
+								commentsCell.setCellValue("No Field Name at Row : " + i);
+								continue;
+							}
+
+						} else {
+							System.out
+									.println("Class does not have proper Entity and Table anontations for Row : " + i);
+							commentsCell.setCellValue(
+									"Class does not have proper Entity and Table anontations for Row : " + i);
+							continue;
+
+						}
+					} catch (ClassNotFoundException e) {
+						System.out.println("No Class found for given Package Name and Enitity Name for Row : " + i);
+						commentsCell
+								.setCellValue("No Class found for given Package Name and Enitity Name for Row : " + i);
+						continue;
+					}
+				} else {
+
+					System.out.println("No Enitity Name at Row : " + i);
+					commentsCell.setCellValue("No Enitity Name at Row : " + i);
+					continue;
+				}
+
+			} else {
+				System.out.println("No Package Name at Row : " + i);
+				commentsCell.setCellValue("No Package Name at Row : " + i);
+			}
+
+		}
+
+		file.close();
+
+		FileOutputStream output_file = new FileOutputStream(new File(filepath));
+		// write changes
+		workbookInput.write(output_file);
+		output_file.close();
+
+		/*FileOutputStream out = new FileOutputStream(new File("D:\\\\Suhas\\\\Balaraj\\\\Output.xlsx"));
+		workbookOutput.write(out);
+		out.close();*/
+
+	}
+
+	private static void oldExcelVersion(FileInputStream file, String filepath) throws IOException, FileNotFoundException {
+		// Create Workbook instance holding reference to .xlsx file
+		HSSFWorkbook workbookInput = new HSSFWorkbook(file);
+
+		// Get first/desired sheet from the workbook
+		HSSFSheet sheetInput = workbookInput.getSheetAt(0);
+
+		// Blank workbook
+		HSSFWorkbook workbookOutput = new HSSFWorkbook();
+
+		// Create a blank sheet
+		HSSFSheet sheetOutputResult = workbookOutput.createSheet("Result");
+		
+		/*int rownumOutputResult = 0;
+
+		Row rowOutput = sheetOutputResult.createRow(rownumOutputResult++);
+
+		Cell cellOutputResult = rowOutput.createCell(0);
+		cellOutputResult.setCellValue("Table Name");
+
+		cellOutputResult = rowOutput.createCell(1);
+		cellOutputResult.setCellValue("Column Name");
+
+		cellOutputResult = rowOutput.createCell(2);
+		cellOutputResult.setCellValue("Attribute Name");*/
+		
+		Row rowInput = sheetInput.getRow(0);
+		
+		Cell tableCell = rowInput.createCell(3);
+		tableCell.setCellValue("Table Name");
+		Cell columnCell = rowInput.createCell(4);
+		columnCell.setCellValue("Column Name");
+		Cell commentsCell = rowInput.createCell(5);
+		commentsCell.setCellValue("Comments");
+
+		// Iterate through each rows one by one
+		int rowCount = sheetInput.getPhysicalNumberOfRows();
+
+		for (int i = 1; i < rowCount; i++) {
+
+			rowInput = sheetInput.getRow(i);
+
+			Cell packageCell = rowInput.getCell(0);
+			Cell entityCell = rowInput.getCell(1);
+			Cell attributeCell = rowInput.getCell(2);
+
+			tableCell = rowInput.createCell(3);
+			columnCell = rowInput.createCell(4);
+			commentsCell = rowInput.createCell(5);
+
+			if (packageCell != null) {
+				if (entityCell != null) {
+					try {
+						Class className = Class
+								.forName(packageCell.getStringCellValue() + "." + entityCell.getStringCellValue());
+
+						javax.persistence.Entity entity = (javax.persistence.Entity) className
+								.getAnnotation(javax.persistence.Entity.class);
+
+						javax.persistence.Table table = (javax.persistence.Table) className
+								.getAnnotation(javax.persistence.Table.class);
+
+						if (entity != null && table != null) {
+
+							if (attributeCell != null) {
+
+								try {
+									Column column = className.getDeclaredField(attributeCell.getStringCellValue())
+											.getAnnotation(Column.class);
+
+									if (column != null) {
+										System.out.print(table.name() + "|");
+										System.out.print(className.getDeclaredField(attributeCell.getStringCellValue())
+												.getAnnotation(Column.class).name() + "|");
+										System.out.println(attributeCell.getStringCellValue());
+
+										/*rowOutput = sheetOutputResult.createRow(rownumOutputResult++);
+										cellOutputResult = rowOutput.createCell(0);
+										cellOutputResult.setCellValue(table.name());
+
+										cellOutputResult = rowOutput.createCell(1);
+										cellOutputResult.setCellValue(
+												className.getDeclaredField(columnCell.getStringCellValue())
+														.getAnnotation(Column.class).name());
+
+										cellOutputResult = rowOutput.createCell(2);
+										cellOutputResult.setCellValue(columnCell.getStringCellValue());*/
+
+										tableCell.setCellValue(table.name());
+										columnCell.setCellValue(className.getDeclaredField(attributeCell.getStringCellValue())
+												.getAnnotation(Column.class).name());
+										commentsCell.setCellValue("Success");
+										
+									} else {
+										System.out
+												.println("Field Name does not have @Column annotations at Row : " + i);
+										commentsCell.setCellValue(
+												"Field Name does not have @Column annotations at Row : " + i);
+										continue;
+									}
+								} catch (NoSuchFieldException e) {
+									System.out.println("Field Name does exists in the file. Row : " + i);
+									commentsCell.setCellValue("Field Name does exists in the file. Row : " + i);
+									continue;
+								}
+							} else {
+								System.out.println("No Field Name at Row : " + i);
+								commentsCell.setCellValue("No Field Name at Row : " + i);
+								continue;
+							}
+
+						} else {
+							System.out
+									.println("Class does not have proper Entity and Table anontations for Row : " + i);
+							commentsCell.setCellValue(
+									"Class does not have proper Entity and Table anontations for Row : " + i);
+							continue;
+
+						}
+					} catch (ClassNotFoundException e) {
+						System.out.println("No Class found for given Package Name and Enitity Name for Row : " + i);
+						commentsCell
+								.setCellValue("No Class found for given Package Name and Enitity Name for Row : " + i);
+						continue;
+					}
+				} else {
+
+					System.out.println("No Enitity Name at Row : " + i);
+					commentsCell.setCellValue("No Enitity Name at Row : " + i);
+					continue;
+				}
+
+			} else {
+				System.out.println("No Package Name at Row : " + i);
+				commentsCell.setCellValue("No Package Name at Row : " + i);
+			}
+
+		}
+
+		file.close();
+
+		FileOutputStream output_file = new FileOutputStream(new File(filepath));
+		// write changes
+		workbookInput.write(output_file);
+		output_file.close();
+
+		/*FileOutputStream out = new FileOutputStream(new File("D:\\\\Suhas\\\\Balaraj\\\\Output.xlsx"));
+		workbookOutput.write(out);
+		out.close();*/
+	}
+
+}
