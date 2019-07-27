@@ -1,1 +1,1 @@
-https://www.yudiz.com/how-to-add-bootstrap-to-an-angular-project/
+mvn install:install-file -Dfile=D:\Suhas\Balaraj\ojdbc7.jar -DgroupId=com.oracle -DartifactId=ojdbc6 -Dversion=11.2.0 -Dpackaging=jar
